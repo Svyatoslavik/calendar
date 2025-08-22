@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,7 +10,6 @@
   .year { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   .month { border: 1px solid #ccc; border-radius: 8px; padding: 10px; }
   .month h3 { text-align: center; margin: 5px 0 10px; }
-
   .weekdays {
       display: flex;
       gap: 3px;
@@ -24,7 +21,6 @@
     .weekdays div {
       width: 30px;
     }
-  
   .calendar { display: grid; grid-template-columns: repeat(7, 30px); gap: 3px; }
   .day { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; user-select: none; font-size: 12px; }
   .day:hover { background: #f0f0f0; }
@@ -80,6 +76,19 @@ for (let y = currentYear - 10; y <= currentYear + 10; y++) {
 document.addEventListener('keydown', (e) => { if (e.key === "Shift") shiftHeld = true; });
 document.addEventListener('keyup', (e) => { if (e.key === "Shift") { shiftHeld = false; shiftStart = null; } });
 
+function addRange(start, end) {
+  // создаём копии объектов, чтобы не модифицировать исходные
+  const from = new Date(Math.min(start.getTime(), end.getTime()));
+  const to = new Date(Math.max(start.getTime(), end.getTime()));
+
+  let iter = new Date(from);
+  while (iter <= to) {
+    const key = `${iter.getFullYear()}-${iter.getMonth() + 1}-${iter.getDate()}`;
+    selectedDays.add(key);
+    iter.setDate(iter.getDate() + 1);
+  }
+}
+
 function renderCalendar(year) {
   yearEl.innerHTML = "";
   countEl.textContent = selectedDays.size;
@@ -123,28 +132,15 @@ function renderCalendar(year) {
       if (selectedDays.has(key)) dayEl.classList.add("selected");
 
       dayEl.addEventListener("click", () => {
+        const dateObj = new Date(year, month, d);
+
         if (shiftHeld) {
           if (!shiftStart) {
-            // первый клик с Shift → выделяем сразу эту клетку
-            shiftStart = {year, month, day: d};
-            const k = `${year}-${month+1}-${d}`;
-            selectedDays.add(k);
-          } else {
-            // второй клик → выделяем диапазон от shiftStart до текущей клетки
-            const startDate = new Date(shiftStart.year, shiftStart.month, shiftStart.day);
-            const endDate = new Date(year, month, d);
-            let from = startDate < endDate ? startDate : endDate;
-            let to = startDate < endDate ? endDate : startDate;
-
-            while (from <= to) {
-              const rangeKey = `${from.getFullYear()}-${from.getMonth() + 1}-${from.getDate()}`;
-              selectedDays.add(rangeKey);
-              from.setDate(from.getDate() + 1);
-            }
-            shiftStart = null; // ждём следующий диапазон при удержании Shift
+            shiftStart = dateObj;
           }
+          addRange(shiftStart, dateObj);
+          shiftStart = dateObj; // обновляем shiftStart для следующего клика
         } else {
-          // обычный одиночный клик
           if (selectedDays.has(key)) selectedDays.delete(key);
           else selectedDays.add(key);
           shiftStart = null;
@@ -169,4 +165,3 @@ clearBtn.addEventListener("click", () => { selectedDays.clear(); shiftStart = nu
 </script>
 </body>
 </html>
-
