@@ -1,35 +1,19 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Year Calendar</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    h2 {
-      text-align: center;
-    }
-    .controls {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .year {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-    }
-    .month {
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 10px;
-    }
-    .month h3 {
-      text-align: center;
-      margin: 5px 0 10px;
-    }
-    .weekdays {
+<meta charset="UTF-8">
+<title>Year Calendar</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  h2 { text-align: center; }
+  .controls { text-align: center; margin-bottom: 20px; }
+  .year { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .month { border: 1px solid #ccc; border-radius: 8px; padding: 10px; }
+  .month h3 { text-align: center; margin: 5px 0 10px; }
+
+  .weekdays {
       display: flex;
       gap: 3px;
       text-align: center;
@@ -40,197 +24,149 @@
     .weekdays div {
       width: 30px;
     }
-    .calendar {
-      display: grid;
-      grid-template-columns: repeat(7, 30px);
-      gap: 3px;
-    }
-    .day {
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
-      user-select: none;
-      font-size: 12px;
-    }
-    .day:hover {
-      background: #f0f0f0;
-    }
-    .selected {
-      background: #4caf50;
-      color: white;
-      font-weight: bold;
-    }
-    .today {
-      border: 2px solid red;
-    }
-    .empty {
-      border: none;
-      cursor: default;
-    }
-  </style>
+  
+  .calendar { display: grid; grid-template-columns: repeat(7, 30px); gap: 3px; }
+  .day { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; user-select: none; font-size: 12px; }
+  .day:hover { background: #f0f0f0; }
+  .selected { background: #4caf50; color: white; font-weight: bold; }
+  .today { border: 2px solid red; }
+  .empty { border: none; cursor: default; }
+  button { margin-left: 10px; padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; background: #eee; cursor: pointer; }
+  button:hover { background: #ddd; }
+</style>
 </head>
 <body>
-  <h2>Selected days: <span id="count">0</span></h2>
+<h2>Selected days: <span id="count">0</span></h2>
 
-  <div class="controls">
-    <label for="yearSelect">Choose year: </label>
-    <select id="yearSelect"></select>
+<div class="controls">
+  <label for="yearSelect">Choose year: </label>
+  <select id="yearSelect"></select>
 
-    <label for="weekStart">Week starts on: </label>
-    <select id="weekStart">
-      <option value="mon" selected>Monday (EU)</option>
-      <option value="sun">Sunday (US)</option>
-    </select>
+  <label for="weekStart">Week starts on: </label>
+  <select id="weekStart">
+    <option value="mon" selected>Monday (EU)</option>
+    <option value="sun">Sunday (US)</option>
+  </select>
 
-    <button id="clearBtn">Clear selection</button>
-  </div>
+  <button id="clearBtn">Clear selection</button>
+</div>
 
-  <div id="year" class="year"></div>
+<div id="year" class="year"></div>
 
-  <script>
-    const yearEl = document.getElementById("year");
-    const countEl = document.getElementById("count");
-    const yearSelect = document.getElementById("yearSelect");
-    const weekStartSelect = document.getElementById("weekStart");
-    const clearBtn = document.getElementById("clearBtn");
-    const selectedDays = new Set();
+<script>
+const yearEl = document.getElementById("year");
+const countEl = document.getElementById("count");
+const yearSelect = document.getElementById("yearSelect");
+const weekStartSelect = document.getElementById("weekStart");
+const clearBtn = document.getElementById("clearBtn");
 
-    let lastClicked = null; // для выделения диапазона Shift
+let selectedDays = new Set();
+let shiftStart = null;
+let shiftHeld = false;
 
-    const today = new Date();
-    const monthNames = [
-      "January","February","March","April","May","June",
-      "July","August","September","October","November","December"
-    ];
+const today = new Date();
+const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const currentYear = today.getFullYear();
 
-    const currentYear = today.getFullYear();
-    for (let y = currentYear - 10; y <= currentYear + 10; y++) {
-      const option = document.createElement("option");
-      option.value = y;
-      option.textContent = y;
-      if (y === currentYear) option.selected = true;
-      yearSelect.appendChild(option);
+for (let y = currentYear - 10; y <= currentYear + 10; y++) {
+  const option = document.createElement("option");
+  option.value = y;
+  option.textContent = y;
+  if (y === currentYear) option.selected = true;
+  yearSelect.appendChild(option);
+}
+
+// Отслеживаем удержание Shift
+document.addEventListener('keydown', (e) => { if (e.key === "Shift") shiftHeld = true; });
+document.addEventListener('keyup', (e) => { if (e.key === "Shift") { shiftHeld = false; shiftStart = null; } });
+
+function renderCalendar(year) {
+  yearEl.innerHTML = "";
+  countEl.textContent = selectedDays.size;
+
+  const weekStart = weekStartSelect.value;
+  const weekdaysOrder = weekStart === "mon" ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  for (let month = 0; month < 12; month++) {
+    const monthEl = document.createElement("div");
+    monthEl.classList.add("month");
+
+    const title = document.createElement("h3");
+    title.textContent = monthNames[month];
+    monthEl.appendChild(title);
+
+    const weekdays = document.createElement("div");
+    weekdays.classList.add("weekdays");
+    weekdaysOrder.forEach(d => { const wd = document.createElement("div"); wd.textContent = d; weekdays.appendChild(wd); });
+    monthEl.appendChild(weekdays);
+
+    const calendarEl = document.createElement("div");
+    calendarEl.classList.add("calendar");
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let offset = weekStart === "mon" ? (firstDay === 0 ? 6 : firstDay - 1) : firstDay;
+
+    for (let i = 0; i < offset; i++) {
+      const empty = document.createElement("div");
+      empty.classList.add("day", "empty");
+      calendarEl.appendChild(empty);
     }
 
-    function renderCalendar(year) {
-      yearEl.innerHTML = "";
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayEl = document.createElement("div");
+      dayEl.classList.add("day");
+      dayEl.textContent = d;
+      const key = `${year}-${month + 1}-${d}`;
 
-      const weekStart = weekStartSelect.value; // "mon" или "sun"
-      const weekdaysOrder =
-        weekStart === "mon"
-          ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
-          : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) dayEl.classList.add("today");
+      if (selectedDays.has(key)) dayEl.classList.add("selected");
 
-      for (let month = 0; month < 12; month++) {
-        const monthEl = document.createElement("div");
-        monthEl.classList.add("month");
+      dayEl.addEventListener("click", () => {
+        if (shiftHeld) {
+          if (!shiftStart) {
+            // первый клик с Shift → выделяем сразу эту клетку
+            shiftStart = {year, month, day: d};
+            const k = `${year}-${month+1}-${d}`;
+            selectedDays.add(k);
+          } else {
+            // второй клик → выделяем диапазон от shiftStart до текущей клетки
+            const startDate = new Date(shiftStart.year, shiftStart.month, shiftStart.day);
+            const endDate = new Date(year, month, d);
+            let from = startDate < endDate ? startDate : endDate;
+            let to = startDate < endDate ? endDate : startDate;
 
-        const title = document.createElement("h3");
-        title.textContent = monthNames[month];
-        monthEl.appendChild(title);
-
-        // Заголовки дней недели
-        const weekdays = document.createElement("div");
-        weekdays.classList.add("weekdays");
-        weekdaysOrder.forEach(d => {
-          const wd = document.createElement("div");
-          wd.textContent = d;
-          weekdays.appendChild(wd);
-        });
-        monthEl.appendChild(weekdays);
-
-        // Сетка календаря
-        const calendarEl = document.createElement("div");
-        calendarEl.classList.add("calendar");
-
-        const firstDay = new Date(year, month, 1).getDay(); // 0=Sun ... 6=Sat
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        // Смещение начала месяца
-        let offset = weekStart === "mon" ? (firstDay === 0 ? 6 : firstDay - 1) : firstDay;
-
-        // пустые ячейки
-        for (let i = 0; i < offset; i++) {
-          const empty = document.createElement("div");
-          empty.classList.add("day", "empty");
-          calendarEl.appendChild(empty);
-        }
-
-        // дни месяца
-        for (let d = 1; d <= daysInMonth; d++) {
-          const dayEl = document.createElement("div");
-          dayEl.classList.add("day");
-          dayEl.textContent = d;
-
-          const key = `${year}-${month + 1}-${d}`;
-
-          if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-            dayEl.classList.add("today");
-          }
-
-          if (selectedDays.has(key)) {
-            dayEl.classList.add("selected");
-          }
-
-          dayEl.addEventListener("click", (e) => {
-            if (e.shiftKey && lastClicked) {
-              // диапазон
-              const [lastYear, lastMonth, lastDay] = lastClicked.split("-").map(Number);
-              const startDate = new Date(lastYear, lastMonth - 1, lastDay);
-              const endDate = new Date(year, month, d);
-
-              let from = startDate < endDate ? startDate : endDate;
-              let to = startDate < endDate ? endDate : startDate;
-
-              while (from <= to) {
-                const rangeKey = `${from.getFullYear()}-${from.getMonth() + 1}-${from.getDate()}`;
-                selectedDays.add(rangeKey);
-                from.setDate(from.getDate() + 1);
-              }
-              renderCalendar(parseInt(yearSelect.value));
-            } else {
-              // одиночный клик
-              if (selectedDays.has(key)) {
-                selectedDays.delete(key);
-                dayEl.classList.remove("selected");
-              } else {
-                selectedDays.add(key);
-                dayEl.classList.add("selected");
-              }
-              lastClicked = key;
+            while (from <= to) {
+              const rangeKey = `${from.getFullYear()}-${from.getMonth() + 1}-${from.getDate()}`;
+              selectedDays.add(rangeKey);
+              from.setDate(from.getDate() + 1);
             }
-            countEl.textContent = selectedDays.size;
-          });
-
-          calendarEl.appendChild(dayEl);
+            shiftStart = null; // ждём следующий диапазон при удержании Shift
+          }
+        } else {
+          // обычный одиночный клик
+          if (selectedDays.has(key)) selectedDays.delete(key);
+          else selectedDays.add(key);
+          shiftStart = null;
         }
+        renderCalendar(parseInt(yearSelect.value));
+      });
 
-        monthEl.appendChild(calendarEl);
-        yearEl.appendChild(monthEl);
-      }
-      countEl.textContent = selectedDays.size;
+      calendarEl.appendChild(dayEl);
     }
 
-    renderCalendar(currentYear);
+    monthEl.appendChild(calendarEl);
+    yearEl.appendChild(monthEl);
+  }
+  countEl.textContent = selectedDays.size;
+}
 
-    yearSelect.addEventListener("change", () => {
-      renderCalendar(parseInt(yearSelect.value));
-    });
+renderCalendar(currentYear);
 
-    weekStartSelect.addEventListener("change", () => {
-      renderCalendar(parseInt(yearSelect.value));
-    });
-
-    clearBtn.addEventListener("click", () => {
-      selectedDays.clear();
-      lastClicked = null;
-      renderCalendar(parseInt(yearSelect.value));
-    });
-  </script>
+yearSelect.addEventListener("change", () => renderCalendar(parseInt(yearSelect.value)));
+weekStartSelect.addEventListener("change", () => renderCalendar(parseInt(yearSelect.value)));
+clearBtn.addEventListener("click", () => { selectedDays.clear(); shiftStart = null; renderCalendar(parseInt(yearSelect.value)); });
+</script>
 </body>
 </html>
+
