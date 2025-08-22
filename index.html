@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Year Calendar</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h2 {
+      text-align: center;
+    }
+    .controls {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .year {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .month {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .month h3 {
+      text-align: center;
+      margin: 5px 0 10px;
+    }
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 30px);
+      text-align: center;
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 30px);
+      gap: 3px;
+    }
+    .day {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+    }
+    .day:hover {
+      background: #f0f0f0;
+    }
+    .selected {
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .today {
+      border: 2px solid red;
+    }
+    .empty {
+      border: none;
+      cursor: default;
+    }
+    button {
+      margin-left: 10px;
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #eee;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #ddd;
+    }
+  </style>
+</head>
+<body>
+  <h2>Selected days: <span id="count">0</span></h2>
+
+  <div class="controls">
+    <label for="yearSelect">Choose year: </label>
+    <select id="yearSelect"></select>
+    <button id="clearBtn">Clear selection</button>
+    <br><br>
+    <label><input type="radio" name="weekStyle" value="eu" checked> European (Mon-Sun)</label>
+    <label><input type="radio" name="weekStyle" value="us"> US (Sun-Sat)</label>
+  </div>
+
+  <div id="year" class="year"></div>
+
+  <script>
+    const yearEl = document.getElementById("year");
+    const countEl = document.getElementById("count");
+    const yearSelect = document.getElementById("yearSelect");
+    const clearBtn = document.getElementById("clearBtn");
+    const weekStyleRadios = document.querySelectorAll("input[name=weekStyle]");
+
+    const savedDays = JSON.parse(localStorage.getItem("selectedDays")) || [];
+    const selectedDays = new Set(savedDays);
+
+    const today = new Date();
+    const monthNames = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+
+    const currentYear = today.getFullYear();
+
+    // default week style
+    let weekStyle = localStorage.getItem("weekStyle") || "eu";
+    document.querySelector(`input[value=${weekStyle}]`).checked = true;
+
+    for (let y = currentYear - 10; y <= currentYear + 10; y++) {
+      const option = document.createElement("option");
+      option.value = y;
+      option.textContent = y;
+      if (y === currentYear) option.selected = true;
+      yearSelect.appendChild(option);
+    }
+
+    function saveSelection() {
+      localStorage.setItem("selectedDays", JSON.stringify([...selectedDays]));
+      localStorage.setItem("weekStyle", weekStyle);
+    }
+
+    function renderCalendar(year) {
+      yearEl.innerHTML = "";
+      countEl.textContent = selectedDays.size;
+
+      for (let month = 0; month < 12; month++) {
+        const monthEl = document.createElement("div");
+        monthEl.classList.add("month");
+
+        const title = document.createElement("h3");
+        title.textContent = monthNames[month];
+        monthEl.appendChild(title);
+
+        const weekdays = document.createElement("div");
+        weekdays.classList.add("weekdays");
+
+        const daysHeader = (weekStyle === "eu") 
+          ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+          : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+        daysHeader.forEach(d => {
+          const wd = document.createElement("div");
+          wd.textContent = d;
+          weekdays.appendChild(wd);
+        });
+        monthEl.appendChild(weekdays);
+
+        const calendarEl = document.createElement("div");
+        calendarEl.classList.add("calendar");
+
+        const firstDay = new Date(year, month, 1).getDay(); // 0=Sun, 1=Mon...
+        let startDay;
+        if (weekStyle === "eu") {
+          startDay = firstDay === 0 ? 7 : firstDay; // Mon=1...Sun=7
+        } else {
+          startDay = firstDay; // Sun=0...Sat=6
+        }
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < (weekStyle === "eu" ? startDay - 1 : startDay); i++) {
+          const empty = document.createElement("div");
+          empty.classList.add("day", "empty");
+          calendarEl.appendChild(empty);
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dayEl = document.createElement("div");
+          dayEl.classList.add("day");
+          dayEl.textContent = d;
+
+          const key = `${year}-${month + 1}-${d}`;
+
+          if (
+            d === today.getDate() &&
+            month === today.getMonth() &&
+            year === today.getFullYear()
+          ) {
+            dayEl.classList.add("today");
+          }
+
+          if (selectedDays.has(key)) {
+            dayEl.classList.add("selected");
+          }
+
+          dayEl.addEventListener("click", () => {
+            if (selectedDays.has(key)) {
+              selectedDays.delete(key);
+              dayEl.classList.remove("selected");
+            } else {
+              selectedDays.add(key);
+              dayEl.classList.add("selected");
+            }
+            countEl.textContent = selectedDays.size;
+            saveSelection();
+          });
+
+          calendarEl.appendChild(dayEl);
+        }
+
+        monthEl.appendChild(calendarEl);
+        yearEl.appendChild(monthEl);
+      }
+    }
+
+    // first render
+    renderCalendar(currentYear);
+
+    yearSelect.addEventListener("change", () => {
+      renderCalendar(parseInt(yearSelect.value));
+    });
+
+    clearBtn.addEventListener("click", () => {
+      selectedDays.clear();
+      saveSelection();
+      renderCalendar(parseInt(yearSelect.value));
+    });
+
+    weekStyleRadios.forEach(r => {
+      r.addEventListener("change", e => {
+        weekStyle = e.target.value;
+        saveSelection();
+        renderCalendar(parseInt(yearSelect.value));
+      });
+    });
+  </script>
+</body>
+</html>
